@@ -10,7 +10,7 @@ class DocumentAnalyzer:
     Intelligent Document Parser using OCR and LLM for legal analytics.
     """
     def __init__(self, openai_api_key: Optional[str] = None):
-        self.openai_client = openai.Client(api_key=openai_api_key or os.environ.get("OPENAI_API_KEY"))
+        self.openai_client = openai.OpenAI(api_key=openai_api_key or os.environ.get("OPENAI_API_KEY"))
 
     def extract_text_from_pdf(self, pdf_path: str) -> str:
         """

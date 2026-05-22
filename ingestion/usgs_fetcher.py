@@ -68,7 +68,6 @@ class USGSDataFetcher:
         """
         Example method to fetch EIA/USGS US Shale Plays.
         """
-        # Placeholder URL - typically this would be a real USGS/EIA shapefile URL
         shale_url = "https://www.eia.gov/maps/map_data/TightOil_ShaleGas_Plays_lower48_TXLA_update.zip"
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -78,6 +77,37 @@ class USGSDataFetcher:
                 return gdf
             except Exception as e:
                 print(f"Failed to fetch shale plays: {e}")
+                return None
+
+    def fetch_usgs_mineral_resources_program_data(self):
+        """
+        Fetches datasets from the USGS Mineral Resources Program Data Portal.
+        This represents the primary data repository containing geospatial downloads,
+        maps, and geochemical/geophysical datasets necessary to establish resource baseline shapes.
+        """
+        # Note: In a production environment, this would target specific dataset URLs
+        # within the MRP Data Portal depending on the targeted mineral.
+        mrp_sample_url = "https://mrdata.usgs.gov/services/ds-1130?request=GetCapabilities&service=WFS&version=1.0.0" # Example WFS endpoint
+        print(f"Targeting USGS MRP portal: {mrp_sample_url}")
+
+        # Implementation would parse WFS or download shapefiles similar to fetch_shale_plays
+        return None
+
+    def fetch_usgs_usmin_spatial_catalog(self):
+        """
+        Fetches spatial data boundaries for known mineral districts and deposits
+        from the USGS Mineral Resources Online Spatial Data Catalog (including USMIN).
+        """
+        # Note: Targets the USMIN mine feature tracking and interactive maps.
+        usmin_shapefile_url = "https://mrdata.usgs.gov/usmin/data/usmin-shape.zip" # Example shapefile URL
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            try:
+                shp_path = self.download_shapefile_zip(usmin_shapefile_url, tmpdir)
+                gdf = self.process_and_save_geodata(shp_path, formation_type="Mineral Deposit", zone_name_col="site_name")
+                return gdf
+            except Exception as e:
+                print(f"Failed to fetch USMIN spatial catalog data: {e}")
                 return None
 
 if __name__ == "__main__":

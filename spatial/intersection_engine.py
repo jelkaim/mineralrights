@@ -23,14 +23,31 @@ class SpatialIntersectionEngine:
         Calculates the geometric intersection between county parcel polygons (surface)
         and USGS-defined probable mineral zones (subsurface) using GeoPandas (In-memory).
 
-        Uses a spatial join (sjoin) to find overlapping geometries.
+        Uses an overlay intersection to calculate exact geometry overlap to compute the `overlap_ratio`.
+        Only retains parcels with >50% overlap ratio to match the PostGIS logic.
         """
         parcels_gdf = self.normalize_gdf(parcels_gdf)
         zones_gdf = self.normalize_gdf(zones_gdf)
 
-        # Spatial join: keep parcels that intersect with geological zones
-        intersected = gpd.sjoin(parcels_gdf, zones_gdf, how="inner", predicate="intersects")
-        return intersected
+        # We need an equal area projection to calculate true area accurately, but for MVP
+        # approximate degrees or a simple re-projection to a typical US equal area (e.g. EPSG:5070)
+        parcels_proj = parcels_gdf.to_crs("EPSG:5070")
+        zones_proj = zones_gdf.to_crs("EPSG:5070")
+
+        parcels_proj['parcel_area'] = parcels_proj.geometry.area
+
+        # Perform overlay intersection to get the actual overlapping geometries
+        intersected = gpd.overlay(parcels_proj, zones_proj, how='intersection')
+
+        # Calculate overlap ratio
+        intersected['overlap_area'] = intersected.geometry.area
+        intersected['overlap_ratio'] = intersected['overlap_area'] / intersected['parcel_area']
+
+        # Filter for >50% overlap to match the requested architecture
+        intersected = intersected[intersected['overlap_ratio'] > 0.5].copy()
+
+        # Return normalized back to original target CRS
+        return intersected.to_crs(self.target_crs)
 
     def find_intersections_postgis(self, db_engine: Any) -> gpd.GeoDataFrame:
         """
@@ -79,7 +96,7 @@ class SpatialIntersectionEngine:
         for deed in deed_history:
             if deed.get("is_mineral_severed"):
                 has_severance = True
-            if deed.get("has_active_lease"):
+            if deed.get("is_lease"):
                 has_active_lease = True
 
         # High value if severed but NOT actively leased by a corporation

@@ -56,6 +56,10 @@ class DocumentAnalyzer:
         lease_keywords = ["memorandum of lease", "oil and gas lease", "lessee"]
         is_lease = any(keyword in text_lower for keyword in lease_keywords)
 
+        # Look for release indicators
+        release_keywords = ["release of lease", "release of oil and gas lease", "surrender of lease"]
+        is_release = any(keyword in text_lower for keyword in release_keywords)
+
         # Basic Grantor/Grantee extraction (very naive fallback)
         grantor_match = re.search(r'(between|from)\s+([A-Z\s,]+)\s+(as grantor|party of the first part)', raw_text, re.IGNORECASE)
         grantee_match = re.search(r'(to)\s+([A-Z\s,]+)\s+(as grantee|party of the second part)', raw_text, re.IGNORECASE)
@@ -65,6 +69,7 @@ class DocumentAnalyzer:
             "grantee_name": grantee_match.group(2).strip() if grantee_match else "Unknown",
             "is_mineral_severed": is_severed,
             "is_lease": is_lease,
+            "is_release": is_release,
             "reservation_percentage": 0.0, # Hard to get deterministically without complex NLP
             "legal_description_metes_and_bounds": "See Document"
         }
@@ -126,17 +131,54 @@ class DocumentAnalyzer:
     def audit_lease_history(self, deed_history: List[Dict[str, Any]]) -> bool:
         """
         Audits later records for lease indicators.
-        Returns True if an active lease is found AFTER the original severance.
-        For MVP, we just check if any lease exists in the chain.
+        Returns True if an active lease is found AFTER the original severance,
+        and has not been subsequently released/terminated.
         """
-        # Sort by date if available, otherwise just scan
-        # In a real scenario, we'd ensure the lease date > severance date
-        for doc in deed_history:
-            # Check document type metadata or the parsed text flags
-            doc_type = str(doc.get("DocumentType", "")).upper()
-            if "LEASE" in doc_type or doc.get("is_lease") is True:
-                return True
-        return False
+        from datetime import datetime
+
+        # Helper to parse dates robustly
+        def parse_date(date_str):
+            if not date_str:
+                return datetime.min
+            try:
+                # Basic ISO format YYYY-MM-DD
+                return datetime.strptime(date_str, "%Y-%m-%d")
+            except Exception:
+                return datetime.min
+
+        # Sort deed history chronologically
+        sorted_history = sorted(deed_history, key=lambda x: parse_date(x.get("Date")))
+
+        # Find the earliest severance date
+        severance_date = datetime.max
+        for doc in sorted_history:
+            if doc.get("is_mineral_severed"):
+                doc_date = parse_date(doc.get("Date"))
+                if doc_date < severance_date:
+                    severance_date = doc_date
+
+        # If no severance, it doesn't matter (we aren't tracking a severed lead)
+        if severance_date == datetime.max:
+            return False
+
+        has_active_lease = False
+
+        # Audit forward from the severance
+        for doc in sorted_history:
+            doc_date = parse_date(doc.get("Date"))
+
+            # Only care about documents executed after or on the day of severance
+            if doc_date >= severance_date:
+                doc_type = str(doc.get("DocumentType", "")).upper()
+
+                # Check for a release first to clear the active lease flag
+                if doc.get("is_release") or "RELEASE" in doc_type:
+                    has_active_lease = False
+                # If it's a lease, mark it active
+                elif "LEASE" in doc_type or doc.get("is_lease"):
+                    has_active_lease = True
+
+        return has_active_lease
 
 if __name__ == "__main__":
     # Example usage:

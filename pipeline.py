@@ -57,34 +57,41 @@ class ArbitragePipeline:
             apn = row.get("APN", "Unknown")
             owner_state = row.get("OWNER_STATE", "TX")
 
+            # Retrieve real spatial overlap and geology data
+            # Requires `overlap_ratio` and `probability_score` computed by intersection engine / fetcher
+            overlap_ratio = row.get("overlap_ratio", 1.0)
+            geology_confidence = row.get("probability_score", 0.9) # default to 0.9 if absent
+
             # Look up deeds for this APN
             parcel_deeds_raw = deeds_by_apn.get(apn, [])
 
-            is_severed = False
-            parcel_deed_history = []
+            # If we have no recorder history, we cannot assume it is unleased or severed.
+            if not parcel_deeds_raw:
+                is_severed = False
+                is_unleased = False
+            else:
+                is_severed = False
+                parcel_deed_history = []
 
-            # Analyze each deed
-            for raw_deed in parcel_deeds_raw:
-                # Use the document text/legal description for heuristic parsing
-                text_to_analyze = raw_deed.get("LegalDescription", "") + " " + raw_deed.get("DocumentType", "")
-                parsed_data = self.document_analyzer.parse_legal_text(text_to_analyze)
-                # Ensure we retain the document type
-                parsed_data["DocumentType"] = raw_deed.get("DocumentType", "UNKNOWN")
+                # Analyze each deed
+                for raw_deed in parcel_deeds_raw:
+                    # Use the document text/legal description for heuristic parsing
+                    text_to_analyze = raw_deed.get("LegalDescription", "") + " " + raw_deed.get("DocumentType", "")
+                    parsed_data = self.document_analyzer.parse_legal_text(text_to_analyze)
+                    # Ensure we retain the document type and date
+                    parsed_data["DocumentType"] = raw_deed.get("DocumentType", "UNKNOWN")
+                    parsed_data["Date"] = raw_deed.get("Date")
 
-                if parsed_data.get("is_mineral_severed"):
-                    is_severed = True
+                    if parsed_data.get("is_mineral_severed"):
+                        is_severed = True
 
-                parcel_deed_history.append(parsed_data)
+                    parcel_deed_history.append(parsed_data)
 
-            # Audit lease history
-            has_active_lease = self.document_analyzer.audit_lease_history(parcel_deed_history)
-            is_unleased = not has_active_lease
+                # Audit lease history
+                has_active_lease = self.document_analyzer.audit_lease_history(parcel_deed_history)
+                is_unleased = not has_active_lease
 
             # Score
-            # Mocking overlap and confidence for the MVP file flow
-            overlap_ratio = 1.0 # Assuming sjoin found >0% overlap, mocking 1.0 for MVP
-            geology_confidence = 0.9
-
             score_data = self.scorer.generate_lead_score(
                 geology_confidence=geology_confidence,
                 parcel_overlap_ratio=overlap_ratio,

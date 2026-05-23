@@ -16,7 +16,7 @@ def test_severance_check_positive():
 def test_severance_check_negative():
     engine = SpatialIntersectionEngine()
     deed_history = [
-        {"is_mineral_severed": True, "has_active_lease": True}
+        {"is_mineral_severed": True, "is_lease": True}
     ]
     # Check returns False due to active lease
     assert engine.evaluate_severance_check(None, deed_history) == False

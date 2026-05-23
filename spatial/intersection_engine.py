@@ -88,16 +88,19 @@ class SpatialIntersectionEngine:
         :return: True if it's a high-value anomaly, False otherwise.
         """
         # Assume the intersection indicates it overlaps a high-probability mineral zone
-        # Now we check the deed history
 
-        has_severance = False
-        has_active_lease = False
+        # We check the deed history using the DocumentAnalyzer to ensure single-source-of-truth
+        # for lease auditing (which properly accounts for chronology and release docs).
+        # We avoid local inline checks like `if deed.get("is_lease")` which miss the full picture.
+        from parser.document_analyzer import DocumentAnalyzer
 
-        for deed in deed_history:
-            if deed.get("is_mineral_severed"):
-                has_severance = True
-            if deed.get("is_lease"):
-                has_active_lease = True
+        has_severance = any(deed.get("is_mineral_severed") for deed in deed_history)
+
+        if not has_severance:
+            return False
+
+        analyzer = DocumentAnalyzer()
+        has_active_lease = analyzer.audit_lease_history(deed_history)
 
         # High value if severed but NOT actively leased by a corporation
         if has_severance and not has_active_lease:

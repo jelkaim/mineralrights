@@ -139,12 +139,14 @@ class DocumentAnalyzer:
         # Helper to parse dates robustly
         def parse_date(date_str):
             if not date_str:
-                return datetime.min
+                return datetime.max
             try:
                 # Basic ISO format YYYY-MM-DD
                 return datetime.strptime(date_str, "%Y-%m-%d")
             except Exception:
-                return datetime.min
+                # If date is unparsable, treat it as datetime.max so it gets sorted
+                # to the END of the chain and doesn't falsely act as an early trigger.
+                return datetime.max
 
         # Sort deed history chronologically
         sorted_history = sorted(deed_history, key=lambda x: parse_date(x.get("Date")))
@@ -154,11 +156,16 @@ class DocumentAnalyzer:
         for doc in sorted_history:
             if doc.get("is_mineral_severed"):
                 doc_date = parse_date(doc.get("Date"))
+                # If we have a severance with no date, we still need to track that it happened.
                 if doc_date < severance_date:
                     severance_date = doc_date
 
         # If no severance, it doesn't matter (we aren't tracking a severed lead)
-        if severance_date == datetime.max:
+        # Note: A severance with NO date will still have a severance_date of datetime.max
+        # To ensure we still audit the remainder of the chain if a severance occurred with no date,
+        # we check the boolean flag, not just the date variable.
+        has_severance = any(doc.get("is_mineral_severed") for doc in sorted_history)
+        if not has_severance:
             return False
 
         has_active_lease = False
@@ -167,7 +174,9 @@ class DocumentAnalyzer:
         for doc in sorted_history:
             doc_date = parse_date(doc.get("Date"))
 
-            # Only care about documents executed after or on the day of severance
+            # Only care about documents executed after or on the day of severance.
+            # If the severance date was unparsable (datetime.max), we still evaluate the lease docs
+            # that come after it in the sorted list (which will also be datetime.max).
             if doc_date >= severance_date:
                 doc_type = str(doc.get("DocumentType", "")).upper()
 

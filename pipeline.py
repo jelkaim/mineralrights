@@ -30,7 +30,15 @@ class ArbitragePipeline:
         # 3. Spatial Intersection (In-memory fallback for MVP without PostGIS running)
         print("\n[Step 3] Running Spatial Intersection")
         intersected_gdf = self.spatial_engine.find_intersections(parcels_gdf, geology_gdf)
-        print(f"Found {len(intersected_gdf)} intersecting parcels.")
+
+        # Deduplicate APNs to prevent multiple leads from overlapping geological features
+        if "APN" in intersected_gdf.columns:
+            # We sort by overlap ratio to keep the highest overlap for that APN
+            if "overlap_ratio" in intersected_gdf.columns:
+                intersected_gdf = intersected_gdf.sort_values("overlap_ratio", ascending=False)
+            intersected_gdf = intersected_gdf.drop_duplicates(subset=["APN"], keep="first")
+
+        print(f"Found {len(intersected_gdf)} unique intersecting parcels.")
 
         if len(intersected_gdf) == 0:
             print("No intersecting parcels found. Exiting pipeline.")

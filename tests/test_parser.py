@@ -50,3 +50,21 @@ def test_audit_lease_history():
         {"DocumentType": "WARRANTY DEED", "is_mineral_severed": True, "Date": "1954-11-12"}
     ]
     assert analyzer.audit_lease_history(history_prior_lease) == False
+
+    # 5. Missing or unparsable dates should be sorted to the end (treated as datetime.max)
+    # This prevents them from falsely acting as an early trigger.
+    history_missing_date = [
+        {"DocumentType": "WARRANTY DEED", "is_mineral_severed": True, "Date": "1954-11-12"},
+        {"DocumentType": "OIL AND GAS LEASE", "is_lease": True, "Date": "Bad-Date-Format"}
+    ]
+    # Because it is treated as datetime.max, it occurs "after" 1954, so it flags active
+    assert analyzer.audit_lease_history(history_missing_date) == True
+
+    # 6. Severance with missing date but release with missing date
+    # (Both evaluate at datetime.max, release should clear it based on order of occurrence)
+    history_missing_dates_release = [
+        {"DocumentType": "WARRANTY DEED", "is_mineral_severed": True, "Date": ""},
+        {"DocumentType": "OIL AND GAS LEASE", "is_lease": True, "Date": "Bad-Date"},
+        {"DocumentType": "RELEASE OF LEASE", "is_release": True, "Date": None}
+    ]
+    assert analyzer.audit_lease_history(history_missing_dates_release) == False

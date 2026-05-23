@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS parcels (
     county_fips VARCHAR(5) NOT NULL,
     parcel_id VARCHAR(100) NOT NULL,
     owner_name VARCHAR(255),
+    owner_address_state VARCHAR(2), -- For out-of-state owner scoring
+    is_estate BOOLEAN DEFAULT FALSE, -- For estate/heir scoring
     geom GEOMETRY(MultiPolygon, 4326) NOT NULL,
     acreage FLOAT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -39,15 +41,17 @@ CREATE TABLE IF NOT EXISTS deeds (
     id SERIAL PRIMARY KEY,
     parcel_id INTEGER REFERENCES parcels(id) ON DELETE CASCADE,
     document_id VARCHAR(255) NOT NULL, -- e.g., County Recorder Instrument Number
+    document_type VARCHAR(100), -- e.g., 'MINERAL DEED', 'WARRANTY DEED', 'MEMORANDUM OF LEASE'
     recording_date DATE,
     grantor_name TEXT,
     grantee_name TEXT,
     is_mineral_severed BOOLEAN DEFAULT FALSE,
     reservation_percentage FLOAT,
     legal_description_metes_and_bounds TEXT,
-    has_active_lease BOOLEAN DEFAULT FALSE,
+    is_lease BOOLEAN DEFAULT FALSE, -- Specifically flags if this document is a lease
     ocr_confidence FLOAT,
     raw_text TEXT,
+    provenance VARCHAR(255), -- Where did this come from? e.g., 'scraper_fidlar', 'offline_export'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -58,9 +62,12 @@ CREATE TABLE IF NOT EXISTS leads (
     parcel_id INTEGER REFERENCES parcels(id) ON DELETE CASCADE,
     zone_id INTEGER REFERENCES geological_zones(id) ON DELETE SET NULL,
     total_score FLOAT, -- Algorithmic score
-    distance_to_active_infrastructure FLOAT, -- Meters/Miles to active well/mine
-    fractionalization_risk_score INTEGER, -- Based on number of heirs
-    competitive_density_score FLOAT, -- Corporate mailers/leases nearby
+    geology_confidence FLOAT,
+    parcel_overlap_ratio FLOAT,
+    likely_severed BOOLEAN,
+    likely_unleased BOOLEAN,
+    out_of_state_owner BOOLEAN,
+    is_estate BOOLEAN,
     is_high_value_anomaly BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

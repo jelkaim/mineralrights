@@ -6,6 +6,12 @@ def test_usgs_fetcher_init():
     fetcher = USGSDataFetcher(db_connection_string="test_db")
     assert fetcher.db_connection_string == "test_db"
 
+def test_load_local_geology():
+    fetcher = USGSDataFetcher()
+    gdf = fetcher.load_local_geology("data/sample_geology.geojson")
+    assert len(gdf) == 1
+    assert "zone_name" in gdf.columns
+
 def test_county_scraper_init():
     scraper = CountyRecorderScraper(headless=True)
     assert scraper.headless == True

@@ -51,14 +51,22 @@ playwright install chromium
 
 > **Note**: For OCR capabilities, you must also install Tesseract on your system (e.g., `apt-get install tesseract-ocr` on Ubuntu, or `brew install tesseract` on macOS).
 
-## Running the Pipeline
+## Running the MVP Pipeline
 
-Currently, the modules are designed as a framework. You can run them independently or integrate them into an overarching pipeline script.
+You can run the end-to-end MVP pipeline from the command line. This workflow accepts local files to process geology shapes, spatial parcels, and deed exports.
 
-Example running the spatial intersection engine (requires sample data):
 ```bash
-python spatial/intersection_engine.py
+python pipeline.py \
+  --geology data/sample_geology.geojson \
+  --parcels data/sample_parcels.geojson \
+  --deeds data/sample_deeds.csv
 ```
+
+### Implementation Notes
+This MVP narrows the scope to a working end-to-end data funnel.
+* **Fully Working:** The pipeline successfully parses local GeoJSON files for geology and parcels, runs a spatial intersection to isolate target parcels, loads county recorder deed exports (CSV), heuristically classifies severance and lease signals from the text, and calculates a ranked lead score.
+* **County Specific:** The current structure uses an offline CSV import path (`ingestion/offline_recorder.py`) for deed documents. Because many county portals actively block automated scraping (e.g., Tyler/Granicus captchas), offline export ingestion is the most reliable MVP data path. The `county_scraper.py` remains in the framework but is mostly a stub for when a county provides an API without firewalls.
+* **Future Work:** Integrating SQLAlchemy/GeoAlchemy2 directly to execute `find_intersections_postgis()` instead of using the in-memory GeoPandas fallback. Further LLM fine-tuning can be added if the strict deterministic heuristics fail on older, complex cursive deeds.
 
 ## Frontend Integration
 

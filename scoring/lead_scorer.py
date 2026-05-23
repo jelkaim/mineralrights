@@ -6,80 +6,58 @@ class LeadScorer:
     fractionalization risk, and competitive density.
     """
 
-    def __init__(self):
+    def __init__(self, target_state: str = "TX"):
         # Weights for the scoring algorithm
         self.weights = {
-            "distance": 0.4,
-            "fractionalization": 0.4,
-            "competition": 0.2
+            "geology_confidence": 0.3,
+            "parcel_overlap": 0.2,
+            "severance_bonus": 0.2,
+            "unleased_bonus": 0.2,
+            "out_of_state_bonus": 0.1
         }
+        self.target_state = target_state
 
-    def calculate_distance_score(self, distance_meters: float) -> float:
+    def generate_lead_score(self,
+                            geology_confidence: float,
+                            parcel_overlap_ratio: float,
+                            is_severed: bool,
+                            is_unleased: bool,
+                            owner_state: str) -> Dict[str, Any]:
         """
-        Calculates score based on proximity to active drilling/mining.
-        Closer = Higher Score.
-        Returns a score between 0.0 and 1.0.
+        Generates the total algorithmic score for a lead based on:
+        - geology confidence
+        - parcel overlap
+        - likely severance
+        - likely unleased status
+        - ownership signals such as out-of-state owner
         """
-        # Assume max relevant distance is 10,000 meters (10km)
-        max_dist = 10000.0
-        if distance_meters <= 0:
-            return 1.0
-        elif distance_meters >= max_dist:
-            return 0.0
 
-        return 1.0 - (distance_meters / max_dist)
+        # Base scores
+        geo_score = min(max(geology_confidence, 0.0), 1.0)
+        overlap_score = min(max(parcel_overlap_ratio, 0.0), 1.0)
 
-    def calculate_fractionalization_score(self, num_heirs: int) -> float:
-        """
-        Calculates score based on the number of living heirs.
-        Fewer heirs = Higher Score (easier to negotiate/purchase).
-        Returns a score between 0.0 and 1.0.
-        """
-        if num_heirs <= 1:
-            return 1.0
-        elif num_heirs <= 3:
-            return 0.8
-        elif num_heirs <= 5:
-            return 0.5
-        elif num_heirs <= 10:
-            return 0.2
-        else:
-            return 0.0
+        # Bonuses
+        sev_score = 1.0 if is_severed else 0.0
+        unleased_score = 1.0 if is_unleased else 0.0
 
-    def calculate_competition_score(self, recent_mailers_count: int) -> float:
-        """
-        Calculates score based on competitive density.
-        Fewer recent corporate mailers/leases = Higher Score (less competition).
-        Returns a score between 0.0 and 1.0.
-        """
-        if recent_mailers_count == 0:
-            return 1.0
-        elif recent_mailers_count == 1:
-            return 0.7
-        elif recent_mailers_count <= 3:
-            return 0.3
-        else:
-            return 0.0
-
-    def generate_lead_score(self, distance_meters: float, num_heirs: int, recent_mailers_count: int) -> Dict[str, float]:
-        """
-        Generates the total algorithmic score for a lead.
-        """
-        dist_score = self.calculate_distance_score(distance_meters)
-        frac_score = self.calculate_fractionalization_score(num_heirs)
-        comp_score = self.calculate_competition_score(recent_mailers_count)
+        # Out of state bonus
+        out_of_state_score = 1.0 if (owner_state and owner_state.upper() != self.target_state.upper()) else 0.0
 
         total_score = (
-            (dist_score * self.weights["distance"]) +
-            (frac_score * self.weights["fractionalization"]) +
-            (comp_score * self.weights["competition"])
+            (geo_score * self.weights["geology_confidence"]) +
+            (overlap_score * self.weights["parcel_overlap"]) +
+            (sev_score * self.weights["severance_bonus"]) +
+            (unleased_score * self.weights["unleased_bonus"]) +
+            (out_of_state_score * self.weights["out_of_state_bonus"])
         )
 
         return {
             "total_score": round(total_score, 3),
-            "distance_score": round(dist_score, 3),
-            "fractionalization_score": round(frac_score, 3),
-            "competition_score": round(comp_score, 3)
+            "geology_confidence": geo_score,
+            "parcel_overlap_ratio": overlap_score,
+            "likely_severed": is_severed,
+            "likely_unleased": is_unleased,
+            "out_of_state_owner": out_of_state_score > 0
         }
 
 if __name__ == "__main__":

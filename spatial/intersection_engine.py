@@ -51,12 +51,13 @@ class SpatialIntersectionEngine:
         """
 
         print("Executing PostGIS >50% overlap intersection query...")
-        # Read directly from PostGIS into a GeoDataFrame
-        # target_surface_parcels = gpd.read_postgis(query, db_engine, geom_col='geom')
-        # return target_surface_parcels
-
-        # Returning an empty mock for framework structure
-        return gpd.GeoDataFrame()
+        try:
+            target_surface_parcels = gpd.read_postgis(query, db_engine, geom_col='geom')
+            print(f"Found {len(target_surface_parcels)} target parcels overlapping geology >50%.")
+            return target_surface_parcels
+        except Exception as e:
+            print(f"PostGIS query failed (likely no DB connection). Falling back to empty GeoDataFrame. Error: {e}")
+            return gpd.GeoDataFrame()
 
     def evaluate_severance_check(self, intersection_row: Any, deed_history: List[Dict[str, Any]]) -> bool:
         """

@@ -44,7 +44,7 @@ class USGSDataFetcher:
 
         raise FileNotFoundError("No .shp file found in the downloaded zip archive.")
 
-    def process_and_save_geodata(self, filepath: str, formation_type: str, zone_name_col: str):
+    def process_and_save_geodata(self, filepath: str, formation_type: str = "Unknown", zone_name_col: str = None) -> gpd.GeoDataFrame:
         """
         Reads spatial data using GeoPandas, normalizes coordinates to EPSG:4326,
         and (optionally) saves it to the database.
@@ -63,6 +63,12 @@ class USGSDataFetcher:
         # e.g. gdf.to_postgis('geological_zones', engine, if_exists='append', ...)
 
         return gdf
+
+    def load_local_geology(self, filepath: str) -> gpd.GeoDataFrame:
+        """
+        Loads geology data from a local file. Used for MVP/offline mode.
+        """
+        return self.process_and_save_geodata(filepath)
 
     def fetch_shale_plays(self):
         """

@@ -69,6 +69,7 @@ class ArbitragePipeline:
                     deeds_by_apn[apn] = []
                 deeds_by_apn[apn].append(deed)
 
+        import pandas as pd
         for index, row in intersected_gdf.iterrows():
             apn = row.get("APN", "Unknown")
             owner_state = row.get("OWNER_STATE", "TX")
@@ -76,7 +77,12 @@ class ArbitragePipeline:
             # Retrieve real spatial overlap and geology data
             # Requires `overlap_ratio` and `probability_score` computed by intersection engine / fetcher
             overlap_ratio = row.get("overlap_ratio", 1.0)
+            if pd.isna(overlap_ratio):
+                overlap_ratio = 1.0
+
             geology_confidence = row.get("probability_score", 0.9) # default to 0.9 if absent
+            if pd.isna(geology_confidence):
+                geology_confidence = 0.9
 
             # Look up deeds for this APN
             parcel_deeds_raw = deeds_by_apn.get(apn, [])

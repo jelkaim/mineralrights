@@ -5,7 +5,8 @@
       "type": "Feature",
       "properties": {
         "zone_name": "Midland Basin Shale",
-        "formation_type": "Shale Play"
+        "formation_type": "Shale Play",
+        "probability_score": null
       },
       "geometry": {
         "type": "Polygon",

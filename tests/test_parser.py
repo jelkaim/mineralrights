@@ -68,3 +68,11 @@ def test_audit_lease_history():
         {"DocumentType": "RELEASE OF LEASE", "is_release": True, "Date": None}
     ]
     assert analyzer.audit_lease_history(history_missing_dates_release) == False
+
+    # 7. Undated severance followed by a properly dated lease
+    # Even though severance_date is datetime.max, the dated lease should trigger as active.
+    history_undated_severance_dated_lease = [
+        {"DocumentType": "WARRANTY DEED", "is_mineral_severed": True, "Date": ""},
+        {"DocumentType": "OIL AND GAS LEASE", "is_lease": True, "Date": "2010-05-01"}
+    ]
+    assert analyzer.audit_lease_history(history_undated_severance_dated_lease) == True

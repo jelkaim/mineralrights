@@ -33,9 +33,17 @@ class ArbitragePipeline:
 
         # Deduplicate APNs to prevent multiple leads from overlapping geological features
         if "APN" in intersected_gdf.columns:
-            # We sort by overlap ratio to keep the highest overlap for that APN
-            if "overlap_ratio" in intersected_gdf.columns:
+            # Sort by a composite spatial proxy score to ensure we keep the highest-value geology polygon
+            # for the lead, rather than just the one with the biggest geometric overlap sliver.
+            if "overlap_ratio" in intersected_gdf.columns and "probability_score" in intersected_gdf.columns:
+                intersected_gdf["_spatial_proxy"] = (
+                    intersected_gdf["probability_score"].fillna(0.9) * 0.3 +
+                    intersected_gdf["overlap_ratio"].fillna(0.0) * 0.2
+                )
+                intersected_gdf = intersected_gdf.sort_values("_spatial_proxy", ascending=False)
+            elif "overlap_ratio" in intersected_gdf.columns:
                 intersected_gdf = intersected_gdf.sort_values("overlap_ratio", ascending=False)
+
             intersected_gdf = intersected_gdf.drop_duplicates(subset=["APN"], keep="first")
 
         print(f"Found {len(intersected_gdf)} unique intersecting parcels.")

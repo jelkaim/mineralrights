@@ -175,9 +175,10 @@ class DocumentAnalyzer:
             doc_date = parse_date(doc.get("Date"))
 
             # Only care about documents executed after or on the day of severance.
-            # If the severance date was unparsable (datetime.max), we still evaluate the lease docs
-            # that come after it in the sorted list (which will also be datetime.max).
-            if doc_date >= severance_date:
+            # If the original severance date was unparsable/missing (datetime.max),
+            # we must evaluate ALL subsequent leases in the chain to be safe,
+            # so we explicitly allow evaluation if severance_date == datetime.max.
+            if severance_date == datetime.max or doc_date >= severance_date:
                 doc_type = str(doc.get("DocumentType", "")).upper()
 
                 # Check for a release first to clear the active lease flag

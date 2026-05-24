@@ -6,6 +6,7 @@ from spatial.intersection_engine import SpatialIntersectionEngine
 from ingestion.offline_recorder import OfflineRecorderImporter
 from parser.document_analyzer import DocumentAnalyzer
 from scoring.lead_scorer import LeadScorer
+from database.db_writer import DatabaseWriter
 
 class ArbitragePipeline:
     def __init__(self, target_state: str = "TX"):
@@ -15,13 +16,24 @@ class ArbitragePipeline:
         self.recorder_importer = OfflineRecorderImporter()
         self.document_analyzer = DocumentAnalyzer()
         self.scorer = LeadScorer(target_state=target_state)
+        self.db_writer = DatabaseWriter()
 
-    def run_mvp_pipeline(self, geology_filepath: str, parcel_filepath: str, offline_deed_export_path: str):
+    def run_mvp_pipeline(self, geology_filepath: str, parcel_filepath: str, offline_deed_export_path: str, persist_to_db: bool = False, live_geology: bool = False):
         print("\n--- Starting MVP Pipeline ---")
 
         # 1. Ingest Geology
         print("\n[Step 1] Ingesting Geology Data")
-        geology_gdf = self.geology_fetcher.load_local_geology(geology_filepath)
+        if live_geology:
+            print("Fetching live geology from USGS (Earthquakes proxy)...")
+            import geopandas as gpd
+            # Using the live earthquake feed as a proxy for live dynamic ingestion
+            live_geojson_url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson"
+            geology_gdf = gpd.read_file(live_geojson_url)
+            if geology_gdf.crs != "EPSG:4326":
+                geology_gdf = geology_gdf.to_crs("EPSG:4326")
+            geology_gdf['probability_score'] = 0.85 # Assign a mock probability to proxy live data
+        else:
+            geology_gdf = self.geology_fetcher.load_local_geology(geology_filepath)
 
         # 2. Ingest Parcels
         print("\n[Step 2] Ingesting Parcel Data")
@@ -135,6 +147,12 @@ class ArbitragePipeline:
 
         # Sort leads by score descending
         leads.sort(key=lambda x: x["Score"], reverse=True)
+
+        if persist_to_db:
+            print("\n[Step 7] Persisting Results to Database")
+            self.db_writer.persist_intersected_parcels(intersected_gdf)
+            self.db_writer.persist_leads(leads)
+
         return leads
 
 if __name__ == "__main__":
@@ -143,10 +161,12 @@ if __name__ == "__main__":
     parser.add_argument("--geology", required=True, help="Path to geology GeoJSON")
     parser.add_argument("--parcels", required=True, help="Path to parcel GeoJSON")
     parser.add_argument("--deeds", required=True, help="Path to offline deeds CSV")
+    parser.add_argument("--persist", action="store_true", help="Persist output to PostGIS database")
+    parser.add_argument("--live-geology", action="store_true", help="Use live USGS earthquake feed instead of local geology file")
     args = parser.parse_args()
 
     pipeline = ArbitragePipeline()
-    results = pipeline.run_mvp_pipeline(args.geology, args.parcels, args.deeds)
+    results = pipeline.run_mvp_pipeline(args.geology, args.parcels, args.deeds, persist_to_db=args.persist, live_geology=args.live_geology)
 
     print("\nTop 5 Leads:")
     for i, lead in enumerate(results[:5]):

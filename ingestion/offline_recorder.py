@@ -10,12 +10,13 @@ class OfflineRecorderImporter:
     def __init__(self):
         pass
 
-    def load_csv_export(self, filepath: str) -> List[Dict]:
+    def load_csv_export(self, filepath: str, county_format: str = "generic") -> List[Dict]:
         """
         Loads a CSV export of county deed index data.
-        Expected format includes columns like: DocumentID, Date, Grantor, Grantee, DocumentType, LegalDescription
+        Maps real-world county export formats to the standard pipeline schema:
+        [DocumentID, Date, APN, Grantor, Grantee, DocumentType, LegalDescription]
         """
-        print(f"Loading offline county recorder export from {filepath}...")
+        print(f"Loading offline county recorder export from {filepath} (Format: {county_format})...")
         records = []
         try:
             with open(filepath, mode='r', encoding='utf-8') as f:
@@ -23,7 +24,23 @@ class OfflineRecorderImporter:
                 for row in reader:
                     # Clean up keys (e.g. remove BOM if present)
                     clean_row = {k.lstrip('\ufeff').strip(): v.strip() for k, v in row.items() if k}
-                    records.append(clean_row)
+
+                    if county_format == "midland_tx":
+                        # Example real-world mapping for Midland County, TX
+                        mapped_row = {
+                            "DocumentID": clean_row.get("InstNumber", ""),
+                            "Date": clean_row.get("RecordingDate", ""),
+                            "APN": clean_row.get("PropertyId", ""),
+                            "Grantor": clean_row.get("Grantor", ""),
+                            "Grantee": clean_row.get("Grantee", ""),
+                            "DocumentType": clean_row.get("DocType", ""),
+                            "LegalDescription": clean_row.get("LegalDesc", "")
+                        }
+                        records.append(mapped_row)
+                    else:
+                        # Generic format assumes keys already match
+                        records.append(clean_row)
+
             print(f"Successfully loaded {len(records)} deed index records.")
         except Exception as e:
             print(f"Failed to load CSV export: {e}")

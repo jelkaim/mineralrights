@@ -6,6 +6,13 @@ def test_document_analyzer_init():
     analyzer = DocumentAnalyzer(openai_api_key="test_key")
     assert analyzer.openai_client.api_key == "test_key"
 
+def test_extract_text_from_pdf():
+    analyzer = DocumentAnalyzer()
+    text = analyzer.extract_text_from_pdf("data/sample_deed.pdf")
+    # Tesseract might output some weird spacing, but it should contain our key words
+    assert "WARRANTY DEED" in text
+    assert "reserves all oil" in text
+
 def test_heuristic_parsing_severance():
     analyzer = DocumentAnalyzer()
     text = "This is a WARRANTY DEED. Grantor hereby reserves all oil, gas, and mineral rights."

@@ -1,74 +1,44 @@
 "use client";
 
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import AnalysisCard from '@/components/AnalysisCard';
-import { LogOut, Upload, ShieldCheck } from 'lucide-react';
+import { Upload, FileText } from 'lucide-react';
 
 export default function Dashboard() {
-  const { isAuthenticated, user, logout } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, router]);
-
-  if (!isAuthenticated) return null;
-
-  // Mock data
-  const mockResults = [
-    { id: '1', productName: 'Premium CBD Tincture', date: 'Oct 24, 2023', score: 98, status: 'Pass' as const },
-    { id: '2', productName: 'Hemp Flower - Sour Diesel', date: 'Oct 22, 2023', score: 85, status: 'Pass' as const },
-    { id: '3', productName: 'Delta-8 Gummies', date: 'Oct 15, 2023', score: 62, status: 'Fail' as const },
-  ];
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white shadow-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <ShieldCheck className="text-green-500 mr-2" size={28} />
-              <span className="text-xl font-bold text-slate-900">HempGuard</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-slate-500 hidden md:block">{user?.email}</span>
-              <button
-                onClick={logout}
-                className="p-2 text-slate-500 hover:text-slate-700 rounded-full hover:bg-slate-100"
-                title="Logout"
-              >
-                <LogOut size={20} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="flex flex-col items-center max-w-4xl mx-auto pt-8">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold text-slate-900 mb-4">Hemp Lab Test Analyzer</h1>
+        <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+          Upload your hemp or CBD product lab results and get an instant compliance analysis with plain English explanations and safety ratings.
+        </p>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-            <p className="text-sm text-slate-500">Manage and analyze your hemp lab test results</p>
+      <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-12">
+        <div className="flex flex-col items-center text-center">
+          <div className="flex items-center gap-3 mb-2">
+            <FileText className="text-blue-600" size={32} />
+            <h2 className="text-2xl font-bold text-slate-900">Upload Lab Results</h2>
           </div>
-          <button className="flex items-center bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-            <Upload size={16} className="mr-2" />
-            Upload Lab Result
-          </button>
-        </div>
+          <p className="text-slate-500 mb-8">Supported formats: PDF, JPEG, PNG</p>
 
-        <div className="mb-6">
-          <h2 className="text-lg font-medium text-slate-900 mb-4">Recent Analyses</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockResults.map((result) => (
-              <AnalysisCard key={result.id} {...result} />
-            ))}
+          <div className="w-full max-w-2xl border-2 border-dashed border-slate-300 rounded-xl p-16 hover:bg-slate-50 transition-colors cursor-pointer flex flex-col items-center">
+            <div className="bg-blue-100 p-4 rounded-xl mb-6 text-blue-600">
+              <Upload size={32} />
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Drop your lab report here</h3>
+            <p className="text-slate-500 mb-6">Or click to browse and select your PDF or image file</p>
+
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors">
+              <FileText size={20} />
+              Browse Files
+            </button>
+
+            <p className="text-xs text-slate-400 mt-6">
+              Supports PDF, JPEG, PNG files up to 10MB
+            </p>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

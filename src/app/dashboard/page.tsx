@@ -9,31 +9,56 @@ export default function Dashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+  const uploadAndAnalyzeFile = async (file: File) => {
+    setIsAnalyzing(true);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze file');
+      }
+
+      const result = await response.json();
+
+      if (result.data) {
+        // Store the result temporarily in localStorage for MVP
+        const id = Date.now().toString();
+        localStorage.setItem(`analysis_${id}`, JSON.stringify(result.data));
+        router.push(`/dashboard/analysis/${id}`);
+      } else if (result.id) {
+        // Fallback to mock routing if no API key is provided
+        router.push(`/dashboard/analysis/${result.id}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error analyzing lab report. Please ensure it is a valid PDF and try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      simulateAnalysis();
+      uploadAndAnalyzeFile(e.target.files[0]);
     }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      simulateAnalysis();
+      uploadAndAnalyzeFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-  };
-
-  const simulateAnalysis = () => {
-    setIsAnalyzing(true);
-    // Simulate API call and processing time
-    setTimeout(() => {
-      setIsAnalyzing(false);
-      // Route to mock analysis ID 1
-      router.push('/dashboard/analysis/1');
-    }, 2000);
   };
 
   const triggerFileInput = () => {

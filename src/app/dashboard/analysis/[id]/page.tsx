@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect, use } from 'react';
+import { useEffect, use, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import ScoreGauge from '@/components/ScoreGauge';
@@ -74,15 +74,41 @@ export default function AnalysisDetail({ params }: { params: Promise<{ id: strin
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
+  const [data, setData] = useState<AnalysisData | null>(null);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthenticated, router]);
 
-  if (!isAuthenticated) return null;
+  useEffect(() => {
+    let active = true;
+    const loadData = () => {
+      const localData = localStorage.getItem(`analysis_${id}`);
+      if (!active) return;
 
-  const data = analysesData[id] || analysesData['1'];
+      if (localData) {
+        try {
+          setData(JSON.parse(localData));
+        } catch (e) {
+          console.error("Failed to parse local analysis data", e);
+          setData(analysesData[id] || analysesData['1']);
+        }
+      } else {
+        setData(analysesData[id] || analysesData['1']);
+      }
+    };
+
+    // We are deliberately doing this inside useEffect to avoid Next.js hydration mismatch
+    // (localStorage is not available on server).
+    loadData();
+
+    return () => { active = false; };
+  }, [id]);
+
+  if (!isAuthenticated || !data) return null;
+
   const isPass = data.status === 'Pass';
 
   return (

@@ -1,73 +1,36 @@
-# Subsurface Arbitrage Engine (SAE)
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-The **Subsurface Arbitrage Engine (SAE)** is an automated application designed to discover severed mineral rights sitting above high-value geological formations. It achieves this by cross-referencing public county land records with federal geological databases.
+## Getting Started
 
-## System Architecture
-
-The application is composed of several modular Python backend services:
-
-1. **`/ingestion`**: Data ingestion pipeline to fetch USGS Shapefiles and web scrape county land records portals.
-2. **`/spatial`**: GIS mapping engine utilizing GeoPandas and PostGIS to find intersections between surface parcels and subsurface mineral zones.
-3. **`/parser`**: Intelligent document parser utilizing Tesseract OCR and OpenAI's LLMs to extract entities from legal property deeds.
-4. **`/scoring`**: Algorithmic scoring engine that ranks leads based on distance to infrastructure, heir fractionalization, and competitive density.
-5. **`/database`**: Database schema designed for PostgreSQL with PostGIS for advanced spatial queries.
-
-## Prerequisites
-
-- **Python 3.11+**
-- **PostgreSQL 14+** with **PostGIS 3+** enabled
-- **Docker** (optional, for containerized deployments)
-
-## Setup Instructions
-
-### 1. Database Configuration (PostGIS)
-
-Ensure you have a PostgreSQL instance running. Create a new database and apply the schema:
+First, run the development server:
 
 ```bash
-createdb sae_db
-psql -d sae_db -f database/schema.sql
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-This script automatically creates the `postgis` extension and initializes tables with proper geometry columns.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-### 2. Environment Variables
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-Create a `.env` file in the root directory and configure the following variables:
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/sae_db
-OPENAI_API_KEY=your-openai-api-key-here
-```
+## Learn More
 
-### 3. Install Dependencies
+To learn more about Next.js, take a look at the following resources:
 
-Install the required Python packages:
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-```bash
-pip install -r requirements.txt
-playwright install chromium
-```
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-> **Note**: For OCR capabilities, you must also install Tesseract on your system (e.g., `apt-get install tesseract-ocr` on Ubuntu, or `brew install tesseract` on macOS).
+## Deploy on Vercel
 
-## Running the MVP Pipeline
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-You can run the end-to-end MVP pipeline from the command line. This workflow accepts local files to process geology shapes, spatial parcels, and deed exports.
-
-```bash
-python pipeline.py \
-  --geology data/sample_geology.geojson \
-  --parcels data/sample_parcels.geojson \
-  --deeds data/sample_deeds.csv
-```
-
-### Implementation Notes
-This MVP narrows the scope to a working end-to-end data funnel.
-* **Fully Working:** The pipeline successfully parses local GeoJSON files for geology and parcels, runs a spatial intersection to isolate target parcels, loads county recorder deed exports (CSV), heuristically classifies severance and lease signals from the text, and calculates a ranked lead score.
-* **County Specific:** The current structure uses an offline CSV import path (`ingestion/offline_recorder.py`) for deed documents. Because many county portals actively block automated scraping (e.g., Tyler/Granicus captchas), offline export ingestion is the most reliable MVP data path. The `county_scraper.py` remains in the framework but is mostly a stub for when a county provides an API without firewalls.
-* **Future Work:** Integrating SQLAlchemy/GeoAlchemy2 directly to execute `find_intersections_postgis()` instead of using the in-memory GeoPandas fallback. Further LLM fine-tuning can be added if the strict deterministic heuristics fail on older, complex cursive deeds.
-
-## Frontend Integration
-
-The backend is designed to serve a simple Next.js (React) dashboard. The dashboard should use Mapbox GL JS or Leaflet to visualize the `geom` data of high-value anomalies outputted into the `leads` table.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
